@@ -75,6 +75,7 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: task-manager-jwt-api:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -83,10 +84,19 @@ jobs:
         run: |
           docker run -d --name test-container -p 8080:8080 \
             -e SPRING_PROFILES_ACTIVE=test \
-            -e JWT_SECRET=test-secret \
             task-manager-jwt-api:latest
-          sleep 20
-          curl -f http://localhost:8080/actuator/health || exit 1
+          for i in $(seq 1 12); do
+            if curl -f http://localhost:8080/actuator/health; then
+              echo "Container is healthy"
+              break
+            fi
+            if [ "$i" -eq 12 ]; then
+              echo "Container failed to become healthy"
+              docker logs test-container
+              exit 1
+            fi
+            sleep 10
+          done
           docker stop test-container
 
   # Optional: Deploy to container registry (uncomment and configure)
