@@ -105,6 +105,7 @@ jobs:
             -e SPRING_DATASOURCE_USERNAME=root \
             -e SPRING_DATASOURCE_PASSWORD=root \
             -e SPRING_DATA_MONGODB_ENABLED=false \
+            -e MANAGEMENT_HEALTH_MONGO_ENABLED=false \
             task-manager-jwt-api:latest
           echo "Waiting for application health..."
           for i in $(seq 1 12); do
