@@ -59,6 +59,19 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- PostgreSQL driver (optional profile) -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- MongoDB for audit logs (NoSQL) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- JWT library: jjwt 0.12.x -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
