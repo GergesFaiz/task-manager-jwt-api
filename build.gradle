@@ -1,0 +1,67 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.3.5'
+    id 'io.spring.dependency-management' version '1.1.6'
+}
+
+group = 'com.example'
+version = '1.0.0'
+sourceCompatibility = '17'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    jjwtVersion = '0.12.6'
+}
+
+dependencies {
+    // Web / REST
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+
+    // Security (JWT implemented manually on top)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+
+    // JPA + validation
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+    // MySQL driver (default profile)
+    runtimeOnly 'com.mysql:mysql-connector-j'
+
+    // SQL Server driver (optional profile)
+    runtimeOnly 'com.microsoft.sqlserver:mssql-jdbc'
+
+    // PostgreSQL driver (optional profile)
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // MongoDB for audit logs (NoSQL)
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+
+    // JWT library: jjwt 0.12.x
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+
+    // Lombok: reduces boilerplate
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Tests (H2 in-memory, so tests run without MySQL)
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'com.h2database:h2'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-parameters'
+}
+
+bootJar {
+    mainClass = 'com.example.taskapi.TaskApiApplication'
+}
