@@ -11,6 +11,9 @@ COPY .mvn .mvn
 COPY mvnw .
 COPY mvnw.cmd .
 
+# Ensure wrapper is executable (git may store it without the exec bit)
+RUN chmod +x mvnw
+
 # Download dependencies (cached layer if pom.xml unchanged)
 RUN ./mvnw dependency:go-offline -B
 
