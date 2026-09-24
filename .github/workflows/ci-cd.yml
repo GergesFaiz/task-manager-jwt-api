@@ -80,11 +80,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
-      - name: Test Docker image starts
+      - name: Test Docker image starts (smoke test with real MySQL)
         run: |
-          docker run -d --name test-container -p 8080:8080 \
-            -e SPRING_PROFILES_ACTIVE=test \
+          docker network create task-test-net
+          docker run -d --name test-mysql --network task-test-net \
+            -e MYSQL_ROOT_PASSWORD=root \
+            -e MYSQL_DATABASE=taskdb \
+            mysql:8.0
+          echo "Waiting for MySQL to be ready..."
+          for i in $(seq 1 24); do
+            if docker exec test-mysql mysqladmin ping -h localhost -u root -proot --silent; then
+              echo "MySQL is ready"
+              break
+            fi
+            if [ "$i" -eq 24 ]; then
+              echo "MySQL failed to start"
+              docker logs test-mysql
+              exit 1
+            fi
+            sleep 5
+          done
+          docker run -d --name test-container --network task-test-net -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL="jdbc:mysql://test-mysql:3306/taskdb?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true" \
+            -e SPRING_DATASOURCE_USERNAME=root \
+            -e SPRING_DATASOURCE_PASSWORD=root \
             task-manager-jwt-api:latest
+          echo "Waiting for application health..."
           for i in $(seq 1 12); do
             if curl -f http://localhost:8080/actuator/health; then
               echo "Container is healthy"
@@ -93,11 +114,13 @@ jobs:
             if [ "$i" -eq 12 ]; then
               echo "Container failed to become healthy"
               docker logs test-container
+              docker logs test-mysql
               exit 1
             fi
             sleep 10
           done
-          docker stop test-container
+          docker stop test-container test-mysql
+          docker network rm task-test-net
 
   # Optional: Deploy to container registry (uncomment and configure)
   # deploy:
