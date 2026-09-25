@@ -80,13 +80,27 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
-      - name: Test Docker image starts (smoke test with real MySQL)
+      - name: Test Docker image starts (smoke test: app + MySQL + MongoDB)
         run: |
           docker network create task-test-net
+          docker run -d --name test-mongo --network task-test-net mongo:7
           docker run -d --name test-mysql --network task-test-net \
             -e MYSQL_ROOT_PASSWORD=root \
             -e MYSQL_DATABASE=taskdb \
             mysql:8.0
+          echo "Waiting for MongoDB to be ready..."
+          for i in $(seq 1 24); do
+            if docker exec test-mongo mongosh --quiet --eval "db.adminCommand('ping')"; then
+              echo "MongoDB is ready"
+              break
+            fi
+            if [ "$i" -eq 24 ]; then
+              echo "MongoDB failed to start"
+              docker logs test-mongo
+              exit 1
+            fi
+            sleep 5
+          done
           echo "Waiting for MySQL to be ready..."
           for i in $(seq 1 24); do
             if docker exec test-mysql mysqladmin ping -h localhost -u root -proot --silent; then
@@ -104,8 +118,7 @@ jobs:
             -e SPRING_DATASOURCE_URL="jdbc:mysql://test-mysql:3306/taskdb?createDatabaseIfNotExist=true&serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true" \
             -e SPRING_DATASOURCE_USERNAME=root \
             -e SPRING_DATASOURCE_PASSWORD=root \
-            -e SPRING_DATA_MONGODB_ENABLED=false \
-            -e MANAGEMENT_HEALTH_MONGO_ENABLED=false \
+            -e SPRING_DATA_MONGODB_URI="mongodb://test-mongo:27017/taskdb" \
             task-manager-jwt-api:latest
           echo "Waiting for application health..."
           for i in $(seq 1 12); do
@@ -117,11 +130,18 @@ jobs:
               echo "Container failed to become healthy"
               docker logs test-container
               docker logs test-mysql
+              docker logs test-mongo
               exit 1
             fi
             sleep 10
           done
-          docker stop test-container test-mysql
+          echo "Functional check: register a user (exercises JWT + MySQL + MongoDB audit)..."
+          REGISTER_RESP=$(curl -s -X POST http://localhost:8080/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"fullName":"CI Smoke","email":"smoke@test.com","password":"secret123"}')
+          echo "$REGISTER_RESP" | grep -q '"token"' || (echo "$REGISTER_RESP"; docker logs test-container; exit 1)
+          echo "Smoke test passed: user registered and JWT issued"
+          docker stop test-container test-mysql test-mongo
           docker network rm task-test-net
 
   # Optional: Deploy to container registry (uncomment and configure)
