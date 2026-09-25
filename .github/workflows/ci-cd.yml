@@ -80,7 +80,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       
-      - name: Test Docker image starts (smoke test: app + MySQL + MongoDB)
+      - name: "Test Docker image starts (smoke test: app + MySQL + MongoDB)"
         run: |
           docker network create task-test-net
           docker run -d --name test-mongo --network task-test-net mongo:7
